@@ -1,14 +1,12 @@
-# -*- encoding: utf-8 -*-
+# -*- coding: utf-8 -*-
 ##############################################################################
 #
-#    Currency rate date check module for OpenERP
-#    Copyright (C) 2012-2013 Akretion (http://www.akretion.com).
-#    @author Alexis de Lattre <alexis.delattre@akretion.com>
-#
+#    OpenERP, Open Source Management Solution
+#    Copyright (c) 2014 ACSONE SA/NV (http://acsone.eu)
 #    This program is free software: you can redistribute it and/or modify
-#    it under the terms of the GNU Affero General Public License as
-#    published by the Free Software Foundation, either version 3 of the
-#    License, or (at your option) any later version.
+#    it under the terms of the GNU Affero General Public License as published
+#    by the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
 #
 #    This program is distributed in the hope that it will be useful,
 #    but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -20,5 +18,10 @@
 #
 ##############################################################################
 
-from . import company
-from . import currency_rate_date_check
+from openerp import models, fields
+
+
+class AccountTaxCode(models.Model):
+    _inherit = 'account.tax.code'
+
+    active = fields.Boolean('Active', default=True)

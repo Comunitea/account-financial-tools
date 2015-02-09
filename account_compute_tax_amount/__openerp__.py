@@ -1,15 +1,12 @@
 # -*- coding: utf-8 -*-
 ##############################################################################
 #
-#    Copyright (c) 2010 Zikzakmedia S.L. (http://www.zikzakmedia.com)
-#    Copyright (c) 2010 Pexego Sistemas Informáticos S.L.
-#    (http://www.pexego.es)
-#    @authors: Jordi Esteve (Zikzakmedia), Borja López Soilán (Pexego)
+#    Author Vincent Renaville. Copyright 2013-2014 Camptocamp SA
 #
 #    This program is free software: you can redistribute it and/or modify
-#    it under the terms of the GNU Affero General Public License as published
-#    by the Free Software Foundation, either version 3 of the License, or
-#    (at your option) any later version.
+#    it under the terms of the GNU Affero General Public License as
+#    published by the Free Software Foundation, either version 3 of the
+#    License, or (at your option) any later version.
 #
 #    This program is distributed in the hope that it will be useful,
 #    but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -20,9 +17,15 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 ##############################################################################
-"""
-Account Chart Update Wizard
-"""
-
-from . import model
-from . import wizard
+{
+    "name": "Recompute tax_amount",
+    "version": "1.0",
+    "depends": ["base",
+                "account"],
+    "author": "Camptocamp",
+    'website': 'http://www.camptocamp.com',
+    'license': 'AGPL-3',
+    'data': [],
+    'installable': True,
+    'active': False,
+}
