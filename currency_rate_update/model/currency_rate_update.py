@@ -102,10 +102,10 @@ CH_ADMIN_supported_currency_array = [
     "USD", "UYU", "VEF", "VND", "ZAR"]
 
 ECB_supported_currency_array = [
-    "AUD", "BGN", "BRL", "CAD", "CHF", "CNY", "CZK", "DKK", "GBP", "HKD",
-    "HRK", "HUF", "IDR", "ILS", "INR", "JPY", "KRW", "LTL", "MXN", "MYR",
-    "NOK", "NZD", "PHP", "PLN", "RON", "RUB", "SEK", "SGD", "THB", "TRY",
-    "USD", "ZAR"]
+    "AUD", "BGN", "BRL", "CAD", "CHF", "CNY", "CZK", "DKK", "EUR", "GBP",
+    "HKD", "HRK", "HUF", "IDR", "ILS", "INR", "JPY", "KRW", "LTL", "MXN",
+    "MYR", "NOK", "NZD", "PHP", "PLN", "RON", "RUB", "SEK", "SGD", "THB",
+    "TRY", "USD", "ZAR"]
 
 MX_BdM_supported_currency_array = [
     "ARS", "AUD", "BBD", "BMD", "BOB", "BRL", "BSD", "BZD", "CAD", "CHF",
@@ -212,7 +212,7 @@ class Currency_rate_update_service(models.Model):
                                           string='Currencies to update with '
                                           'this service')
     # Link with company
-    company_id = fields.Many2one('res.company', 'Linked Company')
+    company_id = fields.Many2one('res.company', 'Company')
     # Note fileds that will be used as a logger
     note = fields.Text('Update logs')
     max_delta_days = fields.Integer(
@@ -237,6 +237,9 @@ class Currency_rate_update_service(models.Model):
     @api.one
     def refresh_currency(self):
         """Refresh the currencies rates !!for all companies now"""
+        _logger.info(
+            'Starting to refresh currencies with service %s (company: %s)',
+            self.service, self.company_id.name)
         factory = Currency_getter_factory()
         curr_obj = self.env['res.currency']
         rate_obj = self.env['res.currency.rate']
@@ -289,6 +292,9 @@ class Currency_rate_update_service(models.Model):
                             'name': rate_name
                         }
                         rate_obj.create(vals)
+                        _logger.info(
+                            'Updated currency %s via service %s',
+                            curr.name, self.service)
 
                 # Show the most recent note at the top
                 msg = '%s \n%s currency updated. %s' % (
@@ -303,7 +309,7 @@ class Currency_rate_update_service(models.Model):
                     repr(exc),
                     note
                 )
-                _logger.info(repr(exc))
+                _logger.error(repr(exc))
                 self.write({'note': error_msg})
             if self._context.get('cron', False):
                 midnight = time(0, 0)
@@ -322,4 +328,6 @@ class Currency_rate_update_service(models.Model):
 
     @api.model
     def _run_currency_update(self):
+        _logger.info('Starting the currency rate update cron')
         self.run_currency_update()
+        _logger.info('End of the currency rate update cron')
