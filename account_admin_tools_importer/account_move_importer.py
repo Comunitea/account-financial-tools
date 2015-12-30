@@ -92,6 +92,16 @@ class account_move_importer(orm.TransientModel):
         'csv_credit_index': fields.integer('Credit field', required=True),
         'csv_credit_regexp': fields.char('Credit regexp', size=32,
                                          required=True),
+        'csv_partner_ref_index': fields.integer('Partner Ref field',
+                                                required=True),
+        'csv_partner_ref_regexp': fields.char('Partner Ref regexp', size=32,
+                                              required=True),
+        'oerp_partner_ref_field': fields.
+        many2one('ir.model.fields', 'OpenERP Partner field',
+                 required=True, domain=[('model', '=', 'res.partner'),
+                                        '|', '|', ('ttype', '=', 'char'),
+                                        ('ttype', '=', 'text'),
+                                        ('ttype', '=', 'many2one')]),
     }
 
     def _get_default_period_id(self, cr, uid, context=None):
@@ -101,25 +111,48 @@ class account_move_importer(orm.TransientModel):
         period_ids = self.pool.get('account.period').find(cr, uid)
         return period_ids and period_ids[0] or False
 
+    def _get_default_ref_field(self, cr, uid, ids, context=None):
+        """ This method set the default value to ref field in res.partner
+             model for the oerp_partner_ref_field field
+             @param self: The object pointer
+             @param cr: The current row, from the database cursor,
+             @param uid: The current user’s ID for security checks,
+             @param ids: List of registers’ IDs
+             @param context: A standard dictionary for contextual values
+             @return: return default value
+         """
+        if context is None:
+            context = {}
+        model_field_obj = self.pool.get('ir.model.fields')
+        model_field_ids = model_field_obj.\
+            search(cr, uid, [('model', '=', 'res.partner'),
+                             ('name', '=', 'ref')], context)
+        default_model_field = model_field_obj.browse(cr, uid, model_field_ids,
+                                                     context)[0].id
+        return default_model_field
+
     _defaults = {
         'company_id': lambda self, cr, uid, context:
         self.pool.get('res.users').browse(cr, uid, uid,
                                           context).company_id.id,
         'period_id': _get_default_period_id,
-        'date': lambda *a: time.strftime('%Y-%m-%d'),
-        'type': lambda *a: 'journal_voucher',  # Based on account move
-        'csv_delimiter': lambda *a: ';',
-        'csv_quotechar': lambda *a: '"',
-        'csv_decimal_separator': lambda *a: '.',
-        'csv_thousands_separator': lambda *a: ',',
-        'csv_code_index': lambda *a: 0,
-        'csv_ref_index': lambda *a: 1,
-        'csv_debit_index': lambda *a: 2,
-        'csv_credit_index': lambda *a: 3,
-        'csv_code_regexp': lambda *a: r'^[0-9]+$',
-        'csv_ref_regexp': lambda *a: r'^.*$',
-        'csv_debit_regexp': lambda *a: r'^[0-9\-\.\,]*$',
-        'csv_credit_regexp': lambda *a: r'^[0-9\-\.\,]*$',
+        'date': lambda * a: time.strftime('%Y-%m-%d'),
+        'type': lambda * a: 'journal_voucher',  # Based on account move
+        'csv_delimiter': lambda * a: ';',
+        'csv_quotechar': lambda * a: '"',
+        'csv_decimal_separator': lambda * a: '.',
+        'csv_thousands_separator': lambda * a: ',',
+        'csv_code_index': lambda * a: 0,
+        'csv_ref_index': lambda * a: 1,
+        'csv_debit_index': lambda * a: 2,
+        'csv_credit_index': lambda * a: 3,
+        'csv_partner_ref_index': lambda * a: 4,
+        'csv_code_regexp': lambda * a: r'^[0-9]+$',
+        'csv_ref_regexp': lambda * a: r'^.*$',
+        'csv_debit_regexp': lambda * a: r'^[0-9\-\.\,]*$',
+        'csv_credit_regexp': lambda * a: r'^[0-9\-\.\,]*$',
+        'csv_partner_ref_regexp': lambda * a: r'^.*$',
+        'oerp_partner_ref_field': _get_default_ref_field,
     }
 
     def _get_accounts_map(self, cr, uid, context=None):
@@ -130,8 +163,8 @@ class account_move_importer(orm.TransientModel):
         partner_ids = self.pool.get('res.partner').search(cr, uid, [],
                                                           context=context)
         accounts_map = {}
-        for partner in self.pool.get('res.partner').browse(cr, uid,
-                                                           partner_ids, context=context):
+        for partner in self.pool.get('res.partner').\
+                browse(cr, uid, partner_ids, context=context):
             #
             # Add the receivable account to the map
             #
@@ -161,15 +194,17 @@ class account_move_importer(orm.TransientModel):
         the wizard.
         """
         accounts_map = self._get_accounts_map(cr, uid, context=context)
+        field_obj = self.pool.get('ir.model.fields')
+        partner_obj = self.pool.get('res.partner')
         logger = logging.getLogger("account_move_importer")
 
         for wiz in self.browse(cr, uid, ids, context=context):
             if not wiz.input_file:
-                raise osv.except_osv(_('UserError'),
+                raise orm.except_orm(_('UserError'),
                                      _("You need to select a file!"))
 
-            account_move_data = self.pool.get('account.move').default_get(cr,
-                                                                          uid, ['state', 'name'])
+            account_move_data = self.pool.get('account.move').\
+                default_get(cr, uid, ['state', 'name'])
             account_move_data.update({
                 'ref': wiz.ref,
                 'journal_id': wiz.journal_id.id,
@@ -195,7 +230,8 @@ class account_move_importer(orm.TransientModel):
 
             for record in reader:
                 # Ignore short records
-                if len(record) > wiz.csv_code_index \
+                if wiz.csv_partner_ref_index \
+                        and len(record) > wiz.csv_code_index \
                         and len(record) > wiz.csv_ref_index \
                         and len(record) > wiz.csv_debit_index \
                         and len(record) > wiz.csv_credit_index:
@@ -204,6 +240,10 @@ class account_move_importer(orm.TransientModel):
                     record_ref = record[wiz.csv_ref_index]
                     record_debit = record[wiz.csv_debit_index]
                     record_credit = record[wiz.csv_credit_index]
+                    record_partner_ref = False
+
+                    if len(record) > wiz.csv_partner_ref_index:
+                        record_partner_ref = record[wiz.csv_partner_ref_index]
 
                     #
                     # Ignore invalid records
@@ -215,23 +255,41 @@ class account_move_importer(orm.TransientModel):
                         #
                         # Clean the input amounts
                         #
-                        record_debit = float(record_debit.replace(wiz.csv_thousands_separator, '').replace(wiz.csv_decimal_separator, '.'))
-                        record_credit = float(record_credit.replace(wiz.csv_thousands_separator, '').replace(wiz.csv_decimal_separator, '.'))
+                        record_debit = \
+                            float(record_debit.
+                                  replace(wiz.csv_thousands_separator, '').
+                                  replace(wiz.csv_decimal_separator, '.'))
+                        record_credit = \
+                            float(record_credit.
+                                  replace(wiz.csv_thousands_separator, '').
+                                  replace(wiz.csv_decimal_separator, '.'))
 
                         #
                         # Find the account (or fail!)
                         #
-                        account_ids = self.pool.get(
-                            'account.account').search(cr,
-                                                      uid, [
-                                                      ('code',
-                                                       '=', record_code),
-                                                      ('company_id',
-                                                       '=', wiz.company_id.id)
-                                                      ])
+                        account_ids = self.pool.get('account.account').\
+                            search(cr, uid, [('code', '=', record_code),
+                                             ('company_id', '=',
+                                              wiz.company_id.id)])
                         if not account_ids:
-                            raise osv.except_osv(_('Error'), _("Account\
+                            raise orm.except_orm(_('Error'), _("Account\
                                         not found: %s!") % record_code)
+
+                        #
+                        # Find the partner searching in oerp_partner_ref_field
+                        #
+                        partner_id = False
+                        if record_partner_ref and \
+                                re.match(wiz.csv_partner_ref_regexp,
+                                         record_partner_ref):
+                            field = field_obj.\
+                                browse(cr, uid, wiz.oerp_partner_ref_field.id,
+                                       context).name
+                            partner_ids = partner_obj.\
+                                search(cr, uid, [(field, '=',
+                                                  record_partner_ref)])
+                            if partner_ids:
+                                partner_id = partner_ids[0]
 
                         #
                         # Prepare the line data
@@ -244,8 +302,8 @@ class account_move_importer(orm.TransientModel):
                             'ref': False,
                             'currency_id': False,
                             'tax_amount': False,
-                            'partner_id': accounts_map.get(account_ids[0])
-                            or False,
+                            'partner_id':  partner_id or
+                            accounts_map.get(account_ids[0]) or False,
                             'tax_code_id': False,
                             'date_maturity': False,
                             'amount_currency': False,
@@ -282,8 +340,9 @@ class account_move_importer(orm.TransientModel):
             ('module', '=', 'account'),
             ('name', '=', 'view_move_form')
         ])
-        resource_id = self.pool.get('ir.model.data').read(cr, uid,
-                                                          model_data_ids, fields=['res_id'], context=context)[0]['res_id']
+        resource_id = self.pool.get('ir.model.data').\
+            read(cr, uid, model_data_ids, fields=['res_id'],
+                 context=context)[0]['res_id']
 
         return {
             'name': _("Imported account moves"),
@@ -296,4 +355,3 @@ class account_move_importer(orm.TransientModel):
             'domain': "[('id', '=', %s)]" % move_id,
             'context': context,
         }
-
