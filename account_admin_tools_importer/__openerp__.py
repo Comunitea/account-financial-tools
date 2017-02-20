@@ -20,9 +20,28 @@
 #
 ##############################################################################
 
-"""
-Account Importarion Admin Tools
-"""
+{
+    "name": "Account Admin Importation Tools",
+    "version": "0.1",
+    "author": "Pexego",
+    "website": "http://www.pexego.es",
+    "category": "Enterprise Specific Modules",
+    "description": """Account Importarion Tools for Administrators
 
-from . import account_importer
-from . import account_move_importer
+Import tools:
+
+- Import accounts from CSV files. This may be useful to import the initial
+  accounts into OpenERP.
+
+- Import account moves from CSV files. This may be useful to import the initial
+  balance into OpenERP.
+            """,
+    "depends": ['base',
+                'account',
+                'account_admin_tools'],
+    "data": ['admin_tools_menu.xml',
+             'account_importer.xml',
+             'account_move_importer.xml'],
+    "installable": True,
+    'license': 'AGPL-3'
+}

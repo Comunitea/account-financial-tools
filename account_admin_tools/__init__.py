@@ -21,8 +21,9 @@
 ##############################################################################
 
 """
-Account Importarion Admin Tools
+Account Admin Tools
 """
 
-from . import account_importer
-from . import account_move_importer
+from . import move_partner_account
+from . import set_partner_in_moves
+from . import set_invoice_ref_in_moves
