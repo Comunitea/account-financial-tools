@@ -20,22 +20,19 @@ The module is able to use the following sources:
    (14:15) ECB time. Source in EUR.
    http://www.ecb.europa.eu/stats/exchange/eurofxref/html/index.en.html
 
-3. Yahoo Finance
-   Updated daily
-
-4. Polish National Bank (Narodowy Bank Polski) (by Grzegorz Grzelak - OpenGLOBE.pl)
+3. Polish National Bank (Narodowy Bank Polski) (by Grzegorz Grzelak - OpenGLOBE.pl)
    Takes official rates from www.nbp.pl. Adds rate table symbol in log.
    You should check when rates should apply to bookkeeping.
    If next day you should change the update hour in schedule settings
    because in Odoo they apply from date of update (date - no hours).
 
-5. Banxico for USD & MXN (created by Agustín Cruz)
+4. Banxico for USD & MXN (created by Agustín Cruz)
    Updated daily
 
-6. Bank of Canada
+5. Bank of Canada
    (WARNING: Currently not working)
 
-7. National Bank of Romania (Banca Nationala a Romaniei)
+6. National Bank of Romania (Banca Nationala a Romaniei)
 
 Configuration
 =============
@@ -65,9 +62,11 @@ Know issues / Roadmap
 =====================
 
 To fix:
+
 * Bank of Canada
 
 Roadmap:
+
 * Google Finance.
 * Updated daily from Citibank N.A., source in EUR. Information may be delayed.
   This is parsed from an HTML page, so it may be broken at anytime.
