@@ -9,6 +9,7 @@
     "category": "Financial Management/Configuration",
     "depends": [
         "base",
+        "mail",
         "account",  # Added to ensure account security groups are present
     ],
     "data": [
