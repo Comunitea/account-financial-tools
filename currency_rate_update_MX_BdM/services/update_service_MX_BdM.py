@@ -2,7 +2,8 @@
 # © 2013-2014 Agustin Cruz openpyme.mx
 # License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl).
 
-from .currency_getter_interface import CurrencyGetterInterface
+from odoo.addons.currency_rate_update.services.currency_getter_interface \
+    import CurrencyGetterInterface
 
 import logging
 _logger = logging.getLogger(__name__)
