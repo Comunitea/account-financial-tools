@@ -2,8 +2,7 @@
 # © 2009 Grzegorz Grzelak
 # License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl).
 
-from odoo.addons.currency_rate_update.services.currency_getter_interface \
-    import CurrencyGetterInterface
+from .currency_getter_interface import CurrencyGetterInterface
 
 from datetime import datetime
 from lxml import etree
