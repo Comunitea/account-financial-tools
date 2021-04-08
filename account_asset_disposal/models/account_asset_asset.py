@@ -4,8 +4,12 @@
 # Copyright 2017 Tecnativa - Pedro M. Baeza
 # License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl.html).
 
+import calendar
 from odoo import models, fields, api, _
 from odoo.tools import float_compare
+from odoo.tools import DEFAULT_SERVER_DATE_FORMAT as DF
+from datetime import date, datetime
+from dateutil.relativedelta import relativedelta
 
 
 class AccountAssetAsset(models.Model):
@@ -67,6 +71,9 @@ class AccountAssetAsset(models.Model):
                 date, loss_value,
             )),
         ]
+        # Metemos el cálculo del depreciado en el años
+        #year_depreciated_amount = asset.disposal_year_depreciation(date)
+        #loss_value -= year_depreciated_amount
         if loss_value:
             lines.append((
                 0, False, self._disposal_line_loss_prepare(
@@ -95,15 +102,64 @@ class AccountAssetAsset(models.Model):
             'context': self.env.context,
         }
 
+
+    def disposal_year_depreciation(self, depreciation_date):
+        for asset in self:
+            depreciation_date =datetime.strptime(depreciation_date, DF).date()
+            day = depreciation_date.day
+            month = depreciation_date.month
+            year = depreciation_date.year
+            total_days = (year % 4) and 365 or 366
+            days = (depreciation_date - self.company_id.compute_fiscalyear_dates(depreciation_date)['date_from']  ).days
+            if asset.method_time == 'percentage':
+
+                percentage = self.method_percentage * days / total_days
+                amount = (asset.value - asset.salvage_value) * percentage / 100
+                return amount
+            elif asset.method == 'linear':
+                amount = ((asset.value - asset.salvage_value) / self.method_number) * days / total_days
+                return amount
+            else:
+                return 0
+
+
     @api.multi
     def dispose(self, date, loss_account):
         moves = self.env['account.move']
+
         for asset in self:
+            # FIX
+            # Calcula amortizado en el año hasta fecha
+
+            year_depreciated_amount = asset.disposal_year_depreciation(date)
+
+            unposted_lines = asset.depreciation_line_ids.filtered(
+                lambda x: not x.move_check
+            )
+            # Creamos una lina para la depreciación en el año y la posteamos
+            sequence = (
+                len(asset.depreciation_line_ids) - len(unposted_lines) +1
+            )
+            last_depr = asset.depreciation_line_ids[sequence -2 ]
+            vals = {
+                'amount': year_depreciated_amount,
+                'asset_id': asset.id,
+                'sequence': sequence,
+                'name': (asset.code or '') + '/' + str(sequence),
+                'remaining_value': asset.value - (last_depr.depreciated_value + year_depreciated_amount),
+                # the asset is completely depreciated
+                'depreciated_value': last_depr.depreciated_value + year_depreciated_amount,
+                'depreciation_date': date,
+            }
+            year_depr = asset.depreciation_line_ids.create(vals)
+            year_depr.create_move()
+
             move = self.env['account.move'].create(
                 asset._disposal_move_prepare(date, loss_account)
             )
             asset.disposal_move_id = move.id
             move.post()
+
             unposted_lines = asset.depreciation_line_ids.filtered(
                 lambda x: not x.move_check
             )
@@ -159,6 +215,12 @@ class AccountAssetAsset(models.Model):
             if asset.disposal_move_id:
                 asset.disposal_move_id.button_cancel()
                 asset.disposal_move_id.unlink()
+
+            if asset.depreciation_line_ids[-2].move_id:
+                asset.depreciation_line_ids[-2].move_id.button_cancel()
+                asset.depreciation_line_ids[-2].move_id.unlink()
+
+            asset.depreciation_line_ids[-1].unlink()
             asset.depreciation_line_ids[-1].unlink()
             if asset.currency_id.is_zero(asset.value_residual):
                 asset.state = 'close'
